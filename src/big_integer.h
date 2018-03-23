@@ -344,9 +344,6 @@ big_integer::big_integer(const std::string &value){
   if((value.size() - cursor) == 0)
     throw std::runtime_error("big_integer::big_integer: invalid value string: empty magnitude");
 
-  big_integer base(10);
-  big_integer result(0);
-
   if(value[0] == '-')
     cursor += 1;
 
@@ -376,6 +373,9 @@ big_integer::big_integer(const std::string &value){
 
   // the maximum number of decimal digits that fits in less than 2^63
   int max_digits_per_group = 18;
+  big_integer base(10);
+  big_integer result(0);
+  
   while(cursor < (int)value.size()){
     unsigned long long group = 0;
     for(int i = 0; (i < max_digits_per_group) && (cursor < (int)value.size()); ++i, ++cursor){
@@ -636,7 +636,7 @@ big_integer big_integer::gcd(const big_integer &_big_integer) const{
   if(mag_comprison == 0)
     return _big_integer;
 
-  // stein’s GCD algorithm (binary GCD algorithm)
+  // steinï¿½s GCD algorithm (binary GCD algorithm)
   // let first operand is a, second operand is b
   // get the greatest power of 2 that divides both numbers
   // divide both numbers by that value
