@@ -57,6 +57,13 @@ public:
   big_integer pow(unsigned long long exp) const;
   big_integer pow_mod(const big_integer &exp, const big_integer &mod) const;
   big_integer gcd(const big_integer &_big_integer) const;
+  big_integer mod_inverse(const big_integer &_big_integer) const;
+
+  big_integer static gcd_extended(
+      const big_integer &a,
+      const big_integer &b,
+      big_integer &x,
+      big_integer &y);
 
   bool operator == (const big_integer &_big_integer) const;
   bool operator != (const big_integer &_big_integer) const;
@@ -330,12 +337,12 @@ big_integer::big_integer(const big_integer &value){
 // numerical constructor (base 10)
 big_integer::big_integer(const long long &value){
   this->sign = ((value == 0) ? 0 : ((value < 0) ? -1 : 1));
-  this->mag = (value * this->sign);
+  this->mag = my_bitset(value * this->sign);
 }
 
 big_integer::big_integer(const unsigned long long &value, const signed char &sign){
   this->sign = ((sign == 0) ? 0 : ((sign < 0) ? -1 : 1));
-  this->mag = value;
+  this->mag = my_bitset(value);
 }
 
 // string constructor (base 10)
@@ -343,6 +350,9 @@ big_integer::big_integer(const std::string &value){
   int cursor = 0;
   if((value.size() - cursor) == 0)
     throw std::runtime_error("big_integer::big_integer: invalid value string: empty magnitude");
+
+  big_integer base(10);
+  big_integer result(0);
 
   if(value[0] == '-')
     cursor += 1;
@@ -373,9 +383,6 @@ big_integer::big_integer(const std::string &value){
 
   // the maximum number of decimal digits that fits in less than 2^63
   int max_digits_per_group = 18;
-  big_integer base(10);
-  big_integer result(0);
-  
   while(cursor < (int)value.size()){
     unsigned long long group = 0;
     for(int i = 0; (i < max_digits_per_group) && (cursor < (int)value.size()); ++i, ++cursor){
@@ -608,7 +615,7 @@ big_integer big_integer::pow_mod(const big_integer &exp, const big_integer &mod)
   if(mod.sign == 0)
     throw std::runtime_error("big_integer::pow_mod: integer division by 0");
 
-  if(exp == 0) return 1;
+  if(exp == 0) return (big_integer(1) % mod);
   if(exp == 1) return ((*this) % mod);
   if(this->sign == 0) return 0;
 
@@ -636,7 +643,7 @@ big_integer big_integer::gcd(const big_integer &_big_integer) const{
   if(mag_comprison == 0)
     return _big_integer;
 
-  // steinï¿½s GCD algorithm (binary GCD algorithm)
+  // stein’s GCD algorithm (binary GCD algorithm)
   // let first operand is a, second operand is b
   // get the greatest power of 2 that divides both numbers
   // divide both numbers by that value
@@ -708,6 +715,33 @@ big_integer big_integer::gcd(const big_integer &_big_integer) const{
   return result;
 }
 
+big_integer big_integer::mod_inverse(const big_integer &_big_integer) const{
+  big_integer x, y;
+  big_integer gcd = big_integer::gcd_extended((*this), _big_integer, x, y);
+
+  if(gcd != 1) return big_integer(0);
+  // _big_integer is added to handle negative x
+  return (((x % _big_integer) + _big_integer) % _big_integer);
+}
+
+big_integer big_integer::gcd_extended(
+    const big_integer &a,
+    const big_integer &b,
+    big_integer &x,
+    big_integer &y) {
+
+  // extended euclidean algorithm
+  if(a == 0){
+    x = 0, y = 1;
+    return b;
+  }
+
+  big_integer x1, y1;
+  big_integer gcd = big_integer::gcd_extended((b % a), a, x1, y1);
+  x = y1 - ((b / a) * x1), y = x1;
+  return gcd;
+}
+
 bool big_integer::operator == (const big_integer &_big_integer) const{
   return (this->sign == _big_integer.sign) &&
       (my_bitset::compare(this->mag, _big_integer.mag) == 0);
@@ -721,6 +755,7 @@ bool big_integer::operator != (const big_integer &_big_integer) const{
 bool big_integer::operator > (const big_integer &_big_integer) const{
   if(this->sign > _big_integer.sign) return true;
   if(this->sign < _big_integer.sign) return false;
+  if(this->sign == 0) return false;
   int mag_comparison = my_bitset::compare(this->mag, _big_integer.mag);
   return (mag_comparison == (-1 * this->sign));
 }
@@ -728,6 +763,7 @@ bool big_integer::operator > (const big_integer &_big_integer) const{
 bool big_integer::operator >= (const big_integer &_big_integer) const{
   if(this->sign > _big_integer.sign) return true;
   if(this->sign < _big_integer.sign) return false;
+  if(this->sign == 0) return true;
   int mag_comparison = my_bitset::compare(this->mag, _big_integer.mag);
   return ((mag_comparison == 0) || (mag_comparison == (-1 * this->sign)));
 }
@@ -735,6 +771,7 @@ bool big_integer::operator >= (const big_integer &_big_integer) const{
 bool big_integer::operator < (const big_integer &_big_integer) const{
   if(this->sign > _big_integer.sign) return false;
   if(this->sign < _big_integer.sign) return true;
+  if(this->sign == 0) return false;
   int mag_comparison = my_bitset::compare(this->mag, _big_integer.mag);
   return (mag_comparison == (1 * this->sign));
 }
@@ -742,6 +779,7 @@ bool big_integer::operator < (const big_integer &_big_integer) const{
 bool big_integer::operator <= (const big_integer &_big_integer) const{
   if(this->sign > _big_integer.sign) return false;
   if(this->sign < _big_integer.sign) return true;
+  if(this->sign == 0) return true;
   int mag_comparison = my_bitset::compare(this->mag, _big_integer.mag);
   return ((mag_comparison == 0) || (mag_comparison == (1 * this->sign)));
 }
@@ -798,7 +836,7 @@ long long big_integer::to_llong() const{
   max_value = (max_value << ((sizeof(unsigned long long) * 8) - 1)) - 1;
 
   if(ullong_mag > max_value)
-    throw std::overflow_error("my_bitset::to_ullong: overflow_error");
+    throw std::overflow_error("big_integer::to_llong: overflow_error");
 
   long long llong_mag = ullong_mag;
   return llong_mag * this->sign;
