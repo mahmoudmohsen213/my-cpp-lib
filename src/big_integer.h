@@ -73,6 +73,10 @@ public:
   bool operator <= (const big_integer &_big_integer) const;
 
   std::string to_string() const;
+  std::string to_bin_string() const;
+  std::string to_oct_string() const;
+  std::string to_dec_string() const;
+  std::string to_hex_string() const;
   long long to_llong() const;
 };
 
@@ -331,18 +335,18 @@ big_integer::big_integer(){
 // copy constructor
 big_integer::big_integer(const big_integer &value){
   this->sign = value.sign;
-  this->mag = value.mag;
+  this->mag = value.mag.trim_left();
 }
 
 // numerical constructor (base 10)
 big_integer::big_integer(const long long &value){
   this->sign = ((value == 0) ? 0 : ((value < 0) ? -1 : 1));
-  this->mag = my_bitset(value * this->sign);
+  this->mag = my_bitset(value * this->sign).trim_left();
 }
 
 big_integer::big_integer(const unsigned long long &value, const signed char &sign){
   this->sign = ((sign == 0) ? 0 : ((sign < 0) ? -1 : 1));
-  this->mag = my_bitset(value);
+  this->mag = my_bitset(value).trim_left();
 }
 
 // string constructor (base 10)
@@ -404,7 +408,7 @@ big_integer::big_integer(const std::string &value){
   if(result.mag.size() == 0) result.sign = 0;
 
   this->sign = result.sign;
-  this->mag = result.mag;
+  this->mag = result.mag.trim_left();
 }
 
 big_integer::~big_integer() { }
@@ -828,6 +832,103 @@ std::string big_integer::to_string() const{
   std::string result_str((char*)result, result_size);
   if(this->sign < 0) return "-" + result_str;
   else return result_str;
+}
+
+std::string big_integer::to_bin_string() const{
+  if(this->sign == 0) return "0";
+  if(this->mag.size() == 0) return "0";
+
+  int bits = this->mag.size();
+  std::string result_str(bits, '0');
+  for(int i = 0; i < bits; ++i)
+    result_str[i] = (this->mag.get(i) ? '1' : '0');
+
+  int first_non_zero = 0;
+  for(int i = 0; i < (int)result_str.size(); ++i){
+    if(result_str[i] != '0') {
+      first_non_zero = i;
+      break;
+    }
+  }
+
+  if(this->sign < 0) return "-" + result_str.substr(first_non_zero);
+  else return result_str.substr(first_non_zero);
+}
+
+std::string big_integer::to_oct_string() const{
+  if(this->sign == 0) return "0";
+  if(this->mag.size() == 0) return "0";
+
+  char oct_digits_map[8] = {
+      '0', '1', '2', '3',
+      '4', '5', '6', '7'
+  };
+
+  int bits = this->mag.size();
+  std::string result_str;
+  result_str.reserve((bits / 3) + 1);
+
+  for(int i = bits - 1; i >= 0;){
+    int dig = 0;
+    for(int exp = 0; (exp < 3) && (i >= 0); --i, ++exp){
+      dig = (((int)this->mag.get(i)) << exp) + dig;
+    }
+
+    result_str.push_back(oct_digits_map[dig]);
+  }
+
+  int result_str_size = result_str.size();
+  int half_result_str_size = result_str_size >> 1;
+  for(int i=0; i < half_result_str_size; ++i)
+    std::swap(result_str[i], result_str[result_str_size - i - 1]);
+
+  int first_non_zero = 0;
+  for(int i = 0; i < (int)result_str.size(); ++i){
+    if(result_str[i] != '0') {
+      first_non_zero = i;
+      break;
+    }
+  }
+
+  if(this->sign < 0) return "-" + result_str.substr(first_non_zero);
+  else return result_str.substr(first_non_zero);
+}
+
+std::string big_integer::to_dec_string() const{
+  return this->to_string();
+}
+
+std::string big_integer::to_hex_string() const{
+  if(this->sign == 0) return "0";
+  if(this->mag.size() == 0) return "0";
+
+  char hex_digits_map[16] = {
+      '0', '1', '2', '3',
+      '4', '5', '6', '7',
+      '8', '9', 'a', 'b',
+      'c', 'd', 'e', 'f'
+  };
+
+  int words = this->mag.words_count();
+  std::string result_str(words << 1, '0');
+
+  for(int i = 0; i < words; ++i) {
+    unsigned char hi_word = this->mag.get_word(i) >> 4;
+    unsigned char lo_word = this->mag.get_word(i) & 15;
+    result_str[i << 1] = hex_digits_map[hi_word];
+    result_str[(i << 1) + 1] = hex_digits_map[lo_word];
+  }
+
+  int first_non_zero = 0;
+  for(int i = 0; i < (int)result_str.size(); ++i){
+    if(result_str[i] != '0') {
+      first_non_zero = i;
+      break;
+    }
+  }
+
+  if(this->sign < 0) return "-" + result_str.substr(first_non_zero);
+  else return result_str.substr(first_non_zero);
 }
 
 long long big_integer::to_llong() const{
