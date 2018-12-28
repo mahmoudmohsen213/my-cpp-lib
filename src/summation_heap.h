@@ -51,7 +51,7 @@ summation_heap::summation_heap(multiset<long long> values, const int &k) : all(v
   }
 
   multiset<long long>::reverse_iterator rit = all.rbegin();
-  for(int i=0; (i < k) && (rit != all.rend()); ++i, ++rit) {
+  for(int i = 0; (i < k) && (rit != all.rend()); ++i, ++rit) {
     largest_k.insert(*rit);
     largest_k_count_lookup[*rit]++;
     largest_k_sum += (*rit);
